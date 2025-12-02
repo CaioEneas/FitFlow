@@ -1,284 +1,272 @@
 /* --- app/(tabs)/CustomDrawerContent.tsx --- */
-/* (Conteúdo do Menu Lateral com o Tema Escuro) */
-
 import React, { useEffect, useState } from 'react';
 import {
-  DrawerContentScrollView,
-  DrawerItemList,
-  DrawerContentComponentProps,
+  DrawerContentScrollView,
+  DrawerItemList,
+  DrawerContentComponentProps,
+  useDrawerStatus,
 } from '@react-navigation/drawer';
 import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  Animated,
-  Modal,
-  TextInput,
-  TouchableOpacity,
-  Button,
-  ActivityIndicator,
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Animated,
+  Modal,
+  TextInput,
+  Button,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useDrawerStatus } from '@react-navigation/drawer';
-import { IconButton } from 'react-native-paper';
+import { IconButton, Avatar } from 'react-native-paper'; // Usando Avatar para consistência
 
 // Paleta de cores do FitFlow
 const COLORS = {
-  background: '#1C1C1E', // Fundo principal do drawer
-  surface: '#1C1C1E',    // Cor de "superfície" (para o header)
-  textLight: '#FFFFFF',  // Texto branco
-  textGray: '#8A8A8E',   // Texto cinza (para email, tipo, id)
-  brandRed: '#E63946',   // Vermelho (para o "não logado")
-  inputBg: '#3A3A3C',    // Fundo do input no modal
+  background: '#1C1C1E',
+  surface: '#2C2C2E',    
+  textLight: '#FFFFFF', 
+  textGray: '#8A8A8E', 
+  brandRed: '#E63946', 
+  inputBg: '#3A3A3C', 
 };
 
-// Interface para os dados do usuário
+// Interface para os dados do usuário (Baseado no objeto salvo no Login/Perfil)
 interface UserData {
-  email: string;
-  userType: string;
-  photo?: string;
+  nome: string;
+  email: string;
+  foto?: string; // Opcional
+  userType?: string;
+  id?: string;
 }
 
 const CustomDrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
-  // Estados para guardar os dados do usuário
-  const [user, setUser] = useState<UserData | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [nome, setNome] = useState<string | null>(null);
-  // Estados de UI (Modal, Loading)
-  const [modalVisible, setModalVisible] = useState(false);
-  const [nomeEditado, setNomeEditado] = useState('');
-  const [loading, setLoading] = useState(false); 
+  // Estados
+  const [user, setUser] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(false); 
 
-  // Animação para o texto "Usuário não logado"
-  const isDrawerOpen = useDrawerStatus();
-  const fadeAnim = useState(new Animated.Value(0))[0];
+  // Estados de Edição de Nome
+  const [modalVisible, setModalVisible] = useState(false);
+  const [nomeEditado, setNomeEditado] = useState('');
 
-  // Carrega os dados do usuário do AsyncStorage quando o menu é aberto
-  useEffect(() => {
-    if (isDrawerOpen === 'open') {
-      (async () => {
-        try {
-          const [email, userType, photo, id, nomeCompleto] = await Promise.all([
-            AsyncStorage.getItem('userEmail'),
-            AsyncStorage.getItem('userType'),
-            AsyncStorage.getItem('userPhoto'),
-            AsyncStorage.getItem('userId'),
-            AsyncStorage.getItem('nome'),
-          ]);
+  // Verifica se o menu está aberto (para recarregar os dados)
+  const isDrawerOpen = useDrawerStatus();
+  const fadeAnim = useState(new Animated.Value(0))[0];
 
-          if (email && userType) {
-            setUser({ email, userType, photo: photo || undefined });
-          } else {
-            setUser(null);
-          }
+  // Roda toda vez que o menu abre ('open')
+  useEffect(() => {
+    if (isDrawerOpen === 'open') {
+      const loadSession = async () => {
+        try {
+          // Busca o objeto UNIFICADO da sessão
+          const sessionJson = await AsyncStorage.getItem('fitflow_user_session');
+          
+          if (sessionJson) {
+            const userData = JSON.parse(sessionJson);
+            setUser(userData);
+            setNomeEditado(userData.nome || '');
+          } else {
+            setUser(null);
+          }
+        } catch (e) {
+          console.error('Erro ao carregar sessão no drawer:', e);
+          setUser(null);
+        }
+      };
+      loadSession();
+    }
+  }, [isDrawerOpen]);
 
-          setUserId(id);
-          const nomeValido = nomeCompleto?.trim();
-          setNome(nomeValido && nomeValido !== '' ? nomeValido : null);
-        } catch (e) {
-          console.error('Erro ao carregar dados do usuário:', e);
-        }
-      })();
-    }
-  }, [isDrawerOpen]);
+  // Animação do texto "não logado"
+  useEffect(() => {
+    if (!user) {
+      Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start();
+    } else {
+      fadeAnim.setValue(0);
+    }
+  }, [user]);
 
-  // Controla a animação de fade-in do texto "não logado"
-  useEffect(() => {
-    if (!user) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      fadeAnim.setValue(0);
-    }
-  }, [user]);
+  // SALVAR EDIÇÃO DE NOME NO DRAWER 
+  const handleSalvarEdicao = async () => {
+    if (!user) return;
 
-  // Salva o nome editado no AsyncStorage e atualiza o estado
-  const handleSalvarEdicao = async () => {
-    try {
-      await AsyncStorage.setItem('nome', nomeEditado);
-      setNome(nomeEditado);
-      setModalVisible(false);
-    } catch (e) {
-      console.error('Erro ao salvar nome:', e);
-    }
-  };
+    try {
+      // Atualiza o estado local
+      const newUser = { ...user, nome: nomeEditado };
+      setUser(newUser);
 
-  return (
-    // Define a cor de fundo principal para todo o conteúdo do menu
-    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* Container do Cabeçalho (Header) */}
-      <View style={styles.header}>
-        {user && (
-          <IconButton
-            icon="pencil"
-            size={22}
-            onPress={() => setModalVisible(true)}
-            style={styles.topLeftIcon}
-            accessibilityLabel="Editar nome"
-            iconColor={COLORS.textLight} // Define a cor do ícone de lápis
-          />
-        )}
+      // Atualiza na SESSÃO (para manter na memória agora)
+      await AsyncStorage.setItem('fitflow_user_session', JSON.stringify(newUser));
 
-        {/* Verifica se o usuário está logado */}
-        {user ? (
-          // Se estiver logado, mostra as infos
-          <>
-            <View style={{ position: 'relative' }}>
-              {loading && (
-                <ActivityIndicator
-                  size="small"
-                  color={COLORS.textLight} // Cor do spinner de loading
-                  style={styles.loader}
-                />
-              )}
-              <Image
-                source={
-                  user.photo
-                    ? { uri: user.photo }
-                    : require('../../assets/images/user-placeholder.png')
-                }
-                style={[styles.avatar, loading && { opacity: 0.3 }]}
-                resizeMode="cover"
-                onLoadStart={() => setLoading(true)}
-                onLoadEnd={() => setLoading(false)}
-              />
-            </View>
-            <Text style={styles.name}>{nome ? nome : 'Nome não disponível'}</Text>
-            <Text style={styles.info}>E-mail: {user.email}</Text>
-            <Text style={styles.info}>Tipo: {user.userType === '0' ? 'Admin' : 'Cliente'}</Text>
-            <Text style={styles.info}>ID: {userId ?? 'N/D'}</Text>
-          </>
-        ) : (
-          // Se não estiver logado, mostra a mensagem
-          <Animated.View style={{ opacity: fadeAnim }}>
-            <Text style={styles.loggedOutText}>❌ Usuário não logado</Text>
-          </Animated.View>
-        )}
-      </View>
+      // Atualiza no "BANCO GERAL" (para manter no próximo login)
+      const usersJson = await AsyncStorage.getItem('fitflow_users');
+      if (usersJson) {
+        let users = JSON.parse(usersJson);
+        const userIndex = users.findIndex((u: any) => u.email === user.email);
+        if (userIndex !== -1) {
+            users[userIndex].nome = nomeEditado;
+            await AsyncStorage.setItem('fitflow_users', JSON.stringify(users));
+        }
+      }
 
-      {/* Container para os itens de navegação (Login, Sair, etc.) */}
-      <View style={{ flex: 1 }}>
-        <DrawerItemList {...props} />
-      </View>
+      setModalVisible(false);
+    } catch (e) {
+      console.error('Erro ao salvar nome:', e);
+    }
+  };
 
-      {/* Modal para Editar o Nome */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}> 
-              Editar Nome
-            </Text>
-            <TextInput
-              value={nomeEditado}
-              onChangeText={setNomeEditado}
-              placeholder="Digite o novo nome"
-              placeholderTextColor={COLORS.textGray} // Cor do placeholder
-              style={styles.input}
-            />
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <Button title="Salvar" onPress={handleSalvarEdicao} color={COLORS.brandRed} />
-  _             <Button
-                title="Cancelar"
-                color={COLORS.textGray}
-                onPress={() => setModalVisible(false)}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </DrawerContentScrollView>
-  );
+  return (
+    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1, backgroundColor: COLORS.background }}>
+      <View style={styles.header}>
+        
+        {/* Botão de Editar Nome (Só aparece se logado) */}
+        {user && (
+          <IconButton
+            icon="pencil"
+            size={20}
+            onPress={() => setModalVisible(true)}
+            style={styles.topLeftIcon}
+            iconColor={COLORS.textLight} 
+          />
+        )}
+
+        {/*  ÁREA DO USUÁRIO */}
+        {user ? (
+          <>
+            <View style={{ marginBottom: 10 }}>
+              {user.foto ? (
+                // Se tiver foto, mostra ela
+                <Avatar.Image 
+                    size={80} 
+                    source={{ uri: user.foto }} 
+                    style={{ backgroundColor: COLORS.surface }}
+                />
+              ) : (
+                // Se não tiver, mostra ícone padrão
+                <Avatar.Icon 
+                    size={80} 
+                    icon="account" 
+                    color={COLORS.textLight}
+                    style={{ backgroundColor: COLORS.surface }}
+                />
+              )}
+            </View>
+            
+            <Text style={styles.name}>{user.nome || 'Usuário FitFlow'}</Text>
+            <Text style={styles.info}>{user.email}</Text>
+          </>
+        ) : (
+          // Se não estiver logado
+          <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
+            <Avatar.Icon size={80} icon="account-off" style={{ backgroundColor: COLORS.surface, marginBottom: 10 }} />
+            <Text style={styles.loggedOutText}>Visitante</Text>
+            <Text style={styles.info}>Faça login para ver seu perfil</Text>
+          </Animated.View>
+        )}
+      </View>
+
+      {/* LISTA DE NAVEGAÇÃO */}
+      <View style={{ flex: 1, paddingTop: 10 }}>
+        <DrawerItemList {...props} />
+      </View>
+
+      {/* --- MODAL DE EDITAR NOME --- */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Editar Nome</Text>
+            
+            <TextInput
+              value={nomeEditado}
+              onChangeText={setNomeEditado}
+              placeholder="Seu nome"
+              placeholderTextColor={COLORS.textGray}
+              style={styles.input}
+              autoFocus
+            />
+            
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <Button title="Cancelar" color={COLORS.textGray} onPress={() => setModalVisible(false)} />
+              <Button title="Salvar" color={COLORS.brandRed} onPress={handleSalvarEdicao} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+    </DrawerContentScrollView>
+  );
 };
 
 export default CustomDrawerContent;
 
-// Estilos da tela
+// --- ESTILOS ---
 const styles = StyleSheet.create({
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.surface, // Cor de "superfície" cinza escura
-    alignItems: 'center',
+  header: {
+    padding: 20,
+    backgroundColor: '#252527', // Um pouco mais claro que o fundo
+    alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.background, // Borda sutil
-  },
-  avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    marginBottom: 10,
-    backgroundColor: COLORS.background, // Fundo do placeholder do avatar
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.textLight, // Cor branca
+    borderBottomColor: '#333',
+    minHeight: 200, // Altura fixa para ficar bonito
+    justifyContent: 'center',
   },
-  info: {
-    fontSize: 14,
-    color: COLORS.textGray, // Cor cinza
-    marginTop: 2,
-  },
-  loggedOutText: {
-    fontSize: 16,
-    color: COLORS.brandRed, // Cor vermelha (brilhante)
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)', // Fundo mais escuro
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '85%',
-    backgroundColor: COLORS.surface, // Fundo cinza escuro
-    padding: 20,
-    borderRadius: 10,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 18, 
+  name: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.textLight,
-    marginBottom: 10,
+    marginTop: 5,
+    textAlign: 'center',
   },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.textGray,
+  info: {
+    fontSize: 13,
+    color: COLORS.textGray,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  loggedOutText: {
+    fontSize: 18,
+    color: COLORS.brandRed,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: COLORS.surface,
+    padding: 20,
+    borderRadius: 12,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  modalTitle: {
+    fontSize: 20, 
+    fontWeight: 'bold',
+    color: COLORS.textLight,
+    marginBottom: 15,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#444',
     backgroundColor: COLORS.inputBg,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 10,
-    color: COLORS.textLight, // Cor do texto digitado
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topLeftIcon: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    zIndex: 1,
-    padding: 0,
-    margin: 0,
-  },
-  loader: {
-    position: 'absolute',
-    top: '30%',
-    left: '40%',
-    zIndex: 10,
-  },
+    borderRadius: 8,
+    padding: 12,
+    color: COLORS.textLight,
+    fontSize: 16,
+  },
+  topLeftIcon: {
+    position: 'absolute',
+    top: 10,
+    right: 10, // Mudei para direita para não atrapalhar o botão de fechar do drawer
+    zIndex: 10,
+    margin: 0,
+  },
 });

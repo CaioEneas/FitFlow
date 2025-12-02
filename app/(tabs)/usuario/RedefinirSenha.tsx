@@ -1,96 +1,91 @@
-import React from 'react';
-import { View, Image } from 'react-native';
-import { TextInput, Button, Text, Snackbar } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
-import { styles } from './styles/RedefinirSenhaScreenStyles'; // Import the styles
-import useRedefinirSenha from './hooks/useRedefinirSenha'; // Import the custom hook
+/* --- app/(tabs)/usuario/RedefinirSenha.tsx --- */
+/* Tela para o utilizador pedir a redefinição de senha */
+
+import React, { useState } from 'react';
+import { View, Alert, ScrollView } from 'react-native';
+import { TextInput, Button, Text } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
+import { styles } from './styles/RedefinirSenhaStyles';
+
+// --- Configuração do Tema (Vermelho/Branco) ---
+const FITFLOW_COLORS = {
+  brandRed: '#E63946',
+  textLight: '#FFFFFF',
+  textGray: '#8A8A8E',
+};
+
+const textInputTheme = {
+  colors: {
+    primary: FITFLOW_COLORS.brandRed,     // Cor do Foco
+    onSurface: FITFLOW_COLORS.textLight,   // Cor do Texto
+    onSurfaceVariant: FITFLOW_COLORS.textGray, // Cor do Label
+    text: FITFLOW_COLORS.textLight,
+    placeholder: FITFLOW_COLORS.textGray,
+  }
+};
 
 export default function RedefinirSenhaScreen() {
-  const {
-    email,
-    setEmail,
-    novaSenha,
-    setNovaSenha,
-    confirmarSenha,
-    setConfirmarSenha,
-    loading,
-    visibleSnackbar,
-    setVisibleSnackbar,
-    handleRedefinirSenha
-  } = useRedefinirSenha(); // Use the custom hook
+  const [email, setEmail] = useState('');
+  const navigation = useNavigation();
+
+  // Função simulada de envio
+  const handleRedefinir = () => {
+    if (!email) {
+      Alert.alert('Erro', 'Por favor, insira o seu e-mail.');
+      return;
+    }
+
+    // (Aqui entraria a chamada para a API)
+    
+    Alert.alert(
+      'Email Enviado!',
+      `Enviamos um link de recuperação para ${email}. Verifique a sua caixa de entrada.`,
+      [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]
+    );
+  };
 
   return (
-    <LinearGradient
-      colors={['#f7e7ce', '#D2B48C', '#A67B5B']}
-      style={styles.container}
-      start={{ x: 0.2, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.imageWrapper}>
-            <Image source={require('../../../assets/images/Elysium.png')} style={styles.image} />
-          </View>
-          <Text style={styles.brand}>Elysium Beauty</Text>
-        </View>
-
-        <Text style={styles.title}>Redefinir Senha</Text>
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+        
+        <Text style={styles.title}>Esqueceu a Senha?</Text>
+        <Text style={styles.subtitle}>
+          Não se preocupe! Insira o seu e-mail abaixo e enviaremos instruções para recuperar a sua conta.
+        </Text>
 
         <TextInput
-          label="E-mail"
+          label="E-mail cadastrado"
           value={email}
           onChangeText={setEmail}
           style={styles.input}
           autoCapitalize="none"
           keyboardType="email-address"
           mode="outlined"
-          left={<TextInput.Icon icon="email" />}
-          outlineColor="#A67B5B"
-          activeOutlineColor="#5D4037"
+          theme={textInputTheme}
+          textColor={FITFLOW_COLORS.textLight}
         />
 
-        <TextInput
-          label="Nova Senha"
-          value={novaSenha}
-          onChangeText={setNovaSenha}
-          secureTextEntry
-          style={styles.input}
-          mode="outlined"
-          left={<TextInput.Icon icon="lock" />}
-          outlineColor="#A67B5B"
-          activeOutlineColor="#5D4037"
-        />
-
-        <TextInput
-          label="Confirmar Senha"
-          value={confirmarSenha}
-          onChangeText={setConfirmarSenha}
-          secureTextEntry
-          style={styles.input}
-          mode="outlined"
-          left={<TextInput.Icon icon="lock-check" />}
-          outlineColor="#A67B5B"
-          activeOutlineColor="#5D4037"
-        />
-
-        <Button
-          mode="contained"
-          onPress={handleRedefinirSenha}
+        <Button 
+          mode="contained" 
+          onPress={handleRedefinir}
           style={styles.button}
-          loading={loading}
-          disabled={loading}
+          labelStyle={{ fontSize: 18, fontWeight: 'bold', color: '#FFF' }}
         >
-          Redefinir Senha
+          Enviar Link
         </Button>
 
-        <Snackbar
-          visible={visibleSnackbar}
-          onDismiss={() => setVisibleSnackbar(false)}
-          duration={Snackbar.DURATION_SHORT}
+        <Text 
+          style={styles.backLink}
+          onPress={() => navigation.goBack()}
         >
-          Senha redefinida com sucesso!
-        </Snackbar>
-      </View>
-    </LinearGradient>
+          Voltar para o Login
+        </Text>
+
+      </ScrollView>
+    </View>
   );
 }

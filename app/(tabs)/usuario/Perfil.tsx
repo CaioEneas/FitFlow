@@ -1,203 +1,233 @@
-import React from 'react';
-import {
-  SafeAreaView,
-  Image,
-  ScrollView,
-  View,
-  Alert,
-  TouchableOpacity,
-  Platform,
-  KeyboardAvoidingView
-} from 'react-native';
-import {
-  PaperProvider,
-  DataTable,
-  TextInput,
-  Modal,
-  Portal,
-  IconButton,
-  Button,
-  Text
-} from 'react-native-paper';
-import { Picker } from '@react-native-picker/picker';
-import { styles } from './styles/PerfilStyles';
-import useUserManagement from './hooks/useUserManagement';
+// React e useState: Essenciais para criar a tela e guardar dados na memória (nome, email, foto).
+import React, { useState } from 'react';
 
-const GerenciamentoUser = () => {
-  const {
-    visible,
-    users,
-    filteredUsers,
-    newUser,
-    currentUser,
-    searchQuery,
-    userPhoto,
-    setNewUser,
-    setSearchQuery,
-    showModal,
-    hideModal,
-    addUser,
-    updateUser,
-    deleteUser,
-    setCurrentUser,
-    pickUserImage,
-    setUserPhoto
-  } = useUserManagement();
+// Componentes Visuais do React Native:
+// View (Caixa), ScrollView (Rolagem), TouchableOpacity (Botão transparente/área clicável), Alert (Pop-up).
+import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+
+// React Native Paper: Biblioteca de UI que fornece componentes prontos e bonitos (Avatar, Button, Text).
+import { Text, Avatar, Button } from 'react-native-paper';
+
+// AsyncStorage: Nosso "Banco de Dados" local. É aqui que lemos quem está logado.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Navegação
+import { useNavigation, useFocusEffect } from '@react-navigation/native'; 
+
+// Expo Image Picker: Biblioteca para acessar a câmera e galeria do celular.
+import * as ImagePicker from 'expo-image-picker'; 
+
+// Estilos externos
+import { styles } from './styles/PerfilStyles'; 
+
+// Banco de Dados FALSO
+const HISTORICO_MOCK = [
+  { id: '1', aula: 'Boxe', data: '15/11/2025', status: 'Concluída' },
+  { id: '2', aula: 'Yoga', data: '12/11/2025', status: 'Cancelada' }, 
+  { id: '3', aula: 'CrossFit', data: '10/11/2025', status: 'Concluída' },
+  { id: '4', aula: 'Fit Dance', data: '05/11/2025', status: 'Concluída' },
+  { id: '5', aula: 'Jiu-Jitsu', data: '01/11/2025', status: 'Cancelada' }, 
+];
+
+// COMPONENTE PRINCIPAL
+export default function MeuPerfilScreen() {
+  
+  // ESTADOS (Memória Temporária da Tela)
+  const [nome, setNome] = useState('Carregando...'); // Começa com texto de carregamento
+  const [email, setEmail] = useState('');
+  const [foto, setFoto] = useState<string | null>(null); // Guarda o caminho da foto no celular
+  
+  const navigation = useNavigation<any>(); // Hook para controlar a navegação
+
+  // EFEITO DE CARREGAMENTO 
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchUserData = async () => {
+        try {
+          // Busca a sessão atual 
+          const sessionJson = await AsyncStorage.getItem('fitflow_user_session');
+          
+          if (sessionJson) {
+            // Se achou sessão, converte de Texto para Objeto JSON
+            const user = JSON.parse(sessionJson);
+            
+            // Preenche os estados com os dados salvos
+            setNome(user.nome || 'Usuário FitFlow');
+            setEmail(user.email || 'Email não disponível');
+            setFoto(user.foto || null); // Se tiver foto salva, carrega. Se não, nulo.
+          } else {
+            // Segurança: Se por algum motivo não tiver sessão (bug ou limpeza de dados),
+            // força o usuário a voltar para o Login imediatamente.
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+            });
+          }
+        } catch (e) {
+          console.error("Erro ao buscar dados do perfil", e);
+        }
+      };
+      
+      // Chama a função que definimos acima
+      fetchUserData();
+    }, []) 
+  );
+
+  // TROCAR FOTO DE PERFIL 
+  const handleTrocarFoto = async () => {
+    // Pede permissão para ler a galeria
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert("Permissão necessária", "É necessário permitir o acesso à galeria para trocar a foto.");
+      return;
+    }
+
+    // Abre a galeria para o usuário escolher
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, // Só mostra fotos, esconde vídeos
+      allowsEditing: true, // Deixa o usuário cortar a foto (crop)
+      aspect: [1, 1], // Força o corte quadrado (1:1) perfeito para perfil
+      quality: 0.5, // Comprime a imagem para 50% (evita deixar o app lento com fotos gigantes)
+    });
+
+    // Se o usuário escolheu uma foto (não cancelou)
+    if (!pickerResult.canceled) {
+      const novaFotoUri = pickerResult.assets[0].uri; // Pega o endereço da foto no celular
+      setFoto(novaFotoUri); // Atualiza a tela instantaneamente
+
+      try {
+        // Agora precisamos salvar essa foto no AsyncStorage
+        // para ela não sumir quando fechar o app.
+
+        // Atualiza na SESSÃO ATUAL 
+        const sessionJson = await AsyncStorage.getItem('fitflow_user_session');
+        if (sessionJson) {
+            let currentUser = JSON.parse(sessionJson);
+            currentUser.foto = novaFotoUri; // Atualiza o campo foto
+            await AsyncStorage.setItem('fitflow_user_session', JSON.stringify(currentUser));
+
+             // Atualiza na LISTA DE TODOS OS USUÁRIOS 
+             // Se não fizermos isso, no próximo login a foto antiga voltaria.
+             const usersJson = await AsyncStorage.getItem('fitflow_users');
+             if (usersJson) {
+                let users = JSON.parse(usersJson);
+                // Procura o usuário certo na lista pelo e-mail
+                const userIndex = users.findIndex((u: any) => u.email === currentUser.email);
+                
+                if (userIndex !== -1) {
+                    users[userIndex].foto = novaFotoUri; // Atualiza o usuário na lista
+                    await AsyncStorage.setItem('fitflow_users', JSON.stringify(users));
+                }
+             }
+        }
+      } catch (e) {
+        Alert.alert("Erro", "Não foi possível salvar a foto permanentemente.");
+      }
+    }
+  };
+
+  // SAIR
+  const handleLogout = async () => {
+    try {
+        // Apaga a sessão do celular
+        await AsyncStorage.removeItem('fitflow_user_session');
+        
+        // Reinicia a navegação do zero
+        // 'reset' apaga o histórico de telas. O usuário não consegue apertar "Voltar"
+        // para ver o perfil de novo, pois a tela de Perfil foi destruída.
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+        });
+    } catch (error) {
+        console.error("Erro ao fazer logout:", error);
+    }
+  };
+
+  // Função auxiliar para mudar a cor da etiqueta de status (Verde ou Vermelho)
+  const getStatusStyle = (status: string) => {
+    if (status === 'Concluída') return styles.statusConcluida;
+    if (status === 'Cancelada') return styles.statusCancelada;
+    return {};
+  };
 
   return (
-    <PaperProvider>
-      <SafeAreaView style={styles.container}>
-        <Image
-          source={require('../../../assets/images/Elysium.png')}
-          style={styles.image}
-        />
-
-        <Button
-          icon="plus"
-          mode="contained"
-          onPress={() => showModal('addUser')}
-          textColor="white"
-          buttonColor="#A67B5B"
-          contentStyle={{ flexDirection: 'row', alignItems: 'center' }}
-          labelStyle={{ marginLeft: 12 }}
-        >
-          Adicionar Usuário
-        </Button>
-
-        <TextInput
-          label="Pesquisar"
-          mode="outlined"
-          value={searchQuery}
-          onChangeText={text => setSearchQuery(text)}
-          style={styles.searchInput}
-        />
-
-        <View style={styles.titleContainer}>
-          <Text style={styles.tableTitle}>Lista de Usuários</Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* ÁREA DA FOTO*/}
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+            {/* TouchableOpacity torna a foto clicável para editar */}
+            <TouchableOpacity onPress={handleTrocarFoto} style={{ position: 'relative' }}>
+                {/* Lógica Condicional: Se tem foto, mostra ela. Se não, mostra ícone padrão. */}
+                {foto ? (
+                    <Avatar.Image size={100} source={{ uri: foto }} style={styles.avatar} />
+                ) : (
+                    <Avatar.Icon size={100} icon="account" style={styles.avatar} color="#FFF" />
+                )}
+                
+                {/* Pequeno ícone de lápis sobreposto no canto */}
+                <View style={{ 
+                    position: 'absolute', 
+                    bottom: 0, 
+                    right: 0, 
+                    backgroundColor: '#E63946', // Vermelho da marca
+                    borderRadius: 20, 
+                    padding: 4,
+                    borderWidth: 2,
+                    borderColor: '#1C1C1E' // Borda escura para separar da foto
+                }}>
+                    <Avatar.Icon size={20} icon="pencil" color="#FFF" style={{ backgroundColor: 'transparent' }} />
+                </View>
+            </TouchableOpacity>
+            
+            <Text style={[styles.nome, { marginTop: 10 }]}>{nome}</Text>
+            <Text style={styles.email}>{email}</Text>
         </View>
 
-        <ScrollView horizontal style={styles.scrollContainer}>
-          <ScrollView style={styles.verticalScroll}>
-            <DataTable style={styles.dataTable}>
-              <DataTable.Header style={styles.tableHeader}>
-                <DataTable.Title style={styles.columnHeader}><Text style={styles.columnHeaderText}>Nome</Text></DataTable.Title>
-                <DataTable.Title style={styles.columnHeader}><Text style={styles.columnHeaderText}>Email</Text></DataTable.Title>
-                <DataTable.Title style={styles.columnHeader}><Text style={styles.columnHeaderText}>Senha</Text></DataTable.Title>
-                <DataTable.Title style={styles.columnHeader}><Text style={styles.columnHeaderText}>Tipo Usuário</Text></DataTable.Title>
-                <DataTable.Title style={styles.columnHeader}><Text style={styles.columnHeaderText}>Ações</Text></DataTable.Title>
-              </DataTable.Header>
+        <View style={styles.buttonContainer}>
+          <Button 
+            mode="contained" // Botão preenchido
+            onPress={() => navigation.navigate('AlterarSenha')}
+            style={styles.button}
+            icon="key"
+            labelStyle={{ fontSize: 16, fontWeight: 'bold', color: '#FFF' }}
+          >
+            Alterar Senha
+          </Button>
+          
+          <Button 
+            mode="outlined" // Botão só com contorno
+            onPress={handleLogout}
+            style={styles.buttonLogout} 
+            textColor="#E63946"
+            icon="logout"
+            labelStyle={{ fontSize: 16, fontWeight: 'bold' }}
+          >
+            Sair
+          </Button>
+        </View>
 
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user, index) => (
-                  <DataTable.Row key={user.id} style={index % 2 === 0 ? styles.zebraRowEven : styles.zebraRowOdd}>
-                    <DataTable.Cell style={styles.columnCell}><Text>{user.nome}</Text></DataTable.Cell>
-                    <DataTable.Cell style={styles.columnCell}><Text>{user.email}</Text></DataTable.Cell>
-                    <DataTable.Cell style={styles.columnCell}><Text>{user.senha}</Text></DataTable.Cell>
-                    <DataTable.Cell style={styles.columnCell}><Text>{user.tipoUsuario}</Text></DataTable.Cell>
-                    <DataTable.Cell style={styles.columnCell}>
-                      <IconButton icon="pencil" size={20} onPress={() => { setCurrentUser(user); showModal('editUser'); }} iconColor="blue" />
-                      <IconButton icon="delete" size={20} onPress={() => { setCurrentUser(user); showModal('deleteUser'); }} iconColor="red" />
-                    </DataTable.Cell>
-                  </DataTable.Row>
-                ))
-              ) : (
-                <DataTable.Row><DataTable.Cell><Text>Nenhum usuário encontrado</Text></DataTable.Cell></DataTable.Row>
-              )}
-            </DataTable>
-          </ScrollView>
-        </ScrollView>
+        {/* HISTÓRICO DAS AULAS */}
+        <Text style={styles.sectionTitle}>Histórico de Aulas</Text>
 
-        <Text style={styles.counterText}>Total de usuários: {filteredUsers.length}</Text>
-
-        {/* Modal: Adicionar */}
-        <Portal>
-          <Modal visible={visible.addUser} onDismiss={() => hideModal('addUser')} contentContainerStyle={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, paddingTop: 50 }}>
-              <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30, flexGrow: 1 }}
-                keyboardShouldPersistTaps="handled"
-                style={{ maxHeight: '85%' }}>
-                <View style={styles.modal}>
-                  <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}><Text style={styles.modalTitle}>Adicionar Usuário</Text></View>
-                    <View style={styles.gridContainer}>
-                      <TextInput label="Nome" mode="outlined" value={newUser.nome} onChangeText={text => setNewUser(prev => ({ ...prev, nome: text }))} style={styles.gridItem} />
-                      <TextInput label="Email" mode="outlined" value={newUser.email} onChangeText={text => setNewUser(prev => ({ ...prev, email: text }))} style={styles.gridItem} />
-                      <TextInput label="Senha" mode="outlined" secureTextEntry value={newUser.senha} onChangeText={text => setNewUser(prev => ({ ...prev, senha: text }))} style={styles.gridItem} />
-                      <Text>Tipo Usuário</Text>
-                      <View style={{ height: 53, width: '100%', borderWidth: 1, borderColor: '#ccc', borderRadius: 5, overflow: 'hidden' }}>
-                        <Picker selectedValue={newUser.tipoUsuario} onValueChange={itemValue => setNewUser(prev => ({ ...prev, tipoUsuario: itemValue }))} style={{ height: '100%', width: '100%' }}>
-                          <Picker.Item label="Administrador" value={0} />
-                          <Picker.Item label="Cliente" value={1} />
-                        </Picker>
-                      </View>
-                    </View>
-
-                    <Text style={{ textAlign: 'center', marginBottom: 8, color: '#5D4037' }}>
-                      Clique na imagem para mudar a foto de perfil
-                    </Text>
-                    <View style={styles.imageContainer}>
-                      <TouchableOpacity onPress={pickUserImage}>
-                        {userPhoto ? (
-                          <Image source={{ uri: userPhoto }} style={styles.profileImage} />
-                        ) : (
-                          <View style={styles.placeholder}>
-                            <Image source={require('../../../assets/images/user-placeholder.png')} style={styles.placeholderImage} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                      {userPhoto && (
-                        <Button mode="outlined" onPress={() => setUserPhoto(null)} style={{ marginTop: 10 }} textColor="#8B4513" icon="close">Remover Foto</Button>
-                      )}
-                    </View>
-
-                    <View style={styles.modalFooter}>
-                      <Button mode="contained" onPress={addUser} style={styles.agendamentoButton}>Adicionar</Button>
-                    </View>
-                  </View>
-                </View>
-              </ScrollView>
-            </KeyboardAvoidingView>
-          </Modal>
-        </Portal>
-
-        {/* Modal: Editar */}
-        <Portal>
-          <Modal visible={visible.editUser} onDismiss={() => hideModal('editUser')} contentContainerStyle={styles.modal}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}><Text style={styles.modalTitle}>Editar Usuário</Text></View>
-              <View style={styles.gridContainer}>
-                <TextInput label="Nome" mode="outlined" value={currentUser?.nome || ''} onChangeText={text => setCurrentUser(prev => prev ? { ...prev, nome: text } : null)} style={styles.gridItem} />
-                <TextInput label="Email" mode="outlined" value={currentUser?.email || ''} onChangeText={text => setCurrentUser(prev => prev ? { ...prev, email: text } : null)} style={styles.gridItem} />
-                <TextInput label="Senha" mode="outlined" secureTextEntry value={currentUser?.senha || ''} onChangeText={text => setCurrentUser(prev => prev ? { ...prev, senha: text } : null)} style={styles.gridItem} />
-                <View style={{ height: 53, borderWidth: 1, borderColor: '#ccc', borderRadius: 5, overflow: 'hidden', marginBottom: 16 }}>
-                  <Picker selectedValue={currentUser?.tipoUsuario} onValueChange={itemValue => setCurrentUser(prev => prev ? { ...prev, tipoUsuario: itemValue } : { tipoUsuario: itemValue, nome: '', senha: '', email: '' })} style={{ height: '100%', width: '100%' }}>
-                    <Picker.Item label="Administrador" value={0} />
-                    <Picker.Item label="Cliente" value={1} />
-                  </Picker>
-                </View>
-              </View>
-              <View style={styles.modalFooter}>
-                <Button mode="contained" onPress={updateUser} style={styles.agendamentoButton}>Atualizar</Button>
-              </View>
+        {/* .map: Transforma cada item da lista de dados em um visual na tela */}
+        {HISTORICO_MOCK.map((item) => (
+          <View key={item.id} style={styles.historyItem}>
+            <View style={styles.historyInfo}>
+              <Text style={styles.historyClass}>{item.aula}</Text>
+              <Text style={styles.historyDate}>{item.data}</Text>
             </View>
-          </Modal>
-        </Portal>
+            
+            {/* Status colorido dinamicamente */}
+            <Text style={[styles.statusBadge, getStatusStyle(item.status)]}>
+              {item.status}
+            </Text>
+          </View>
+        ))}
 
-        {/* Modal: Deletar */}
-        <Portal>
-          <Modal visible={visible.deleteUser} onDismiss={() => hideModal('deleteUser')} contentContainerStyle={styles.modal}>
-            <View style={styles.modalContent}>
-              <Text style={{ fontSize: 18, marginBottom: 16 }}>Deseja realmente excluir o usuário <Text style={{ fontWeight: 'bold' }}>{currentUser?.nome}</Text>?</Text>
-              <View style={styles.modalFooter}>
-                <Button mode="outlined" onPress={() => hideModal('deleteUser')} style={{ marginRight: 10 }}>Cancelar</Button>
-                <Button mode="contained" onPress={deleteUser}>Excluir</Button>
-              </View>
-            </View>
-          </Modal>
-        </Portal>
-      </SafeAreaView>
-    </PaperProvider>
+      </ScrollView>
+    </View>
   );
-};
-
-export default GerenciamentoUser;
+}

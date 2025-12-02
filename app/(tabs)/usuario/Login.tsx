@@ -1,135 +1,159 @@
-/* --- app/(tabs)/usuario/Login.tsx --- */
-/* Tela de Login refatorada para o layout do Figma */
-/* (Versão com caminhos de import CORRIGIDOS e comentários detalhados) */
-
-// Importa React e os hooks 'useState' (para guardar estado) e 'useEffect' (para efeitos colaterais)
 import React, { useState, useEffect } from 'react';
-// Importa componentes visuais básicos do React Native
 import { View, Image, Alert, ScrollView } from 'react-native';
-// Importa componentes visuais estilizados da biblioteca 'react-native-paper'
 import { TextInput, Button, Text, Snackbar } from 'react-native-paper';
-// Importa o hook 'useNavigation' para permitir a troca de telas
 import { useNavigation } from '@react-navigation/native';
-// Importa o tipo 'StackNavigationProp' para dar tipagem ao nosso hook de navegação
-import { StackNavigationProp } from '@react-navigation/stack';
-// Importa o componente de Barra de Status
 import { StatusBar } from 'expo-status-bar';
-// Importa nossos estilos customizados (baseado na sua estrutura 'imagem_2025-11-16_002353254.png')
-import { styles } from './styles/LoginScreenStyles'; 
-// Importa nosso hook de autenticação (Padrão Singleton)
-import { useAuth } from './hooks/useAuth'; 
-// Importa o AsyncStorage para checar se o usuário já está logado
+
+// AsyncStorage: O nosso banco de dados no celular.
+// Usamos para ler os usuários cadastrados e salvar quem está logado agora.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Importa nossa função de validação (Padrão Strategy)
-import { validateLoginFields } from './util/utils'; 
 
-// Define os tipos das rotas que podemos navegar a partir desta tela
-type RootStackParamList = {
-  HomeTabs: undefined; // 'HomeTabs' é o nome da tela que contém nossas abas (definido no _layout.tsx)
-  RegistroUser: undefined; // Tela de Registro
-  RedefinirSenha: undefined; // Tela de Redefinir Senha
-};
+// Estilos visuais (cores, margens, etc) que ficam em outro arquivo
+import { styles } from './styles/LoginScreenStyles'; 
 
+// Cores padrão do aplicativo
 const FITFLOW_COLORS = {
   brandRed: '#E63946',
   textLight: '#FFFFFF',
   textGray: '#8A8A8E',
 };
 
+// Configuração visual dos campos de texto (input)
 const textInputTheme = {
   colors: {
-    primary: FITFLOW_COLORS.brandRed,     // Cor do FOCO
-    onSurface: FITFLOW_COLORS.textLight,   // Cor do TEXTO digitado
-    onSurfaceVariant: FITFLOW_COLORS.textGray, // Cor do LABEL 
-    text: FITFLOW_COLORS.textLight,       // Cor do texto digitado
-    placeholder: FITFLOW_COLORS.textGray, // Cor do placeholder
+    primary: FITFLOW_COLORS.brandRed, // Cor da borda ao clicar
+    onSurface: FITFLOW_COLORS.textLight, // Cor do texto digitado
+    onSurfaceVariant: FITFLOW_COLORS.textGray, // Cor do texto de dica (placeholder)
+    text: FITFLOW_COLORS.textLight,
+    placeholder: FITFLOW_COLORS.textGray,
   }
 };
 
-// --- Componente Principal da Tela de Login ---
 export default function LoginScreen() {
-  // --- Estados ---
-  // Cria um estado 'email' e uma função 'setEmail' para atualizá-lo
-  const [email, setEmail] = useState('');
-  // Cria um estado 'senha' e uma função 'setSenha' para atualizá-lo
-  const [senha, setSenha] = useState('');
+  // --- MEMÓRIA DA TELA (Estados) ---
+  const [email, setEmail] = useState(''); // Guarda o e-mail digitado
+  const [senha, setSenha] = useState(''); // Guarda a senha digitada
+  const [loading, setLoading] = useState(false); // Controla o ícone de carregamento no botão
+  const [visibleSnackbar, setVisibleSnackbar] = useState(false); // Controla a mensagem de sucesso no rodapé
 
-  // --- Hooks ---
-  // Inicializa o hook de navegação com a tipagem que definimos
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  // Extrai as funções e estados do nosso hook de autenticação
-  const { loading, visibleSnackbar, setVisibleSnackbar, handleLogin } = useAuth();
+  // Hook de navegação: Ferramenta para mudar de tela
+  const navigation = useNavigation<any>();
 
-  // --- Efeito ---
-  // 'useEffect' que roda uma vez '[]' para checar se o usuário já está logado
-  useEffect(() => {
-    // Função interna assíncrona
-    const checkUser = async () => {
-      try {
-        // Tenta ler o 'userType' do disco
-        const userType = await AsyncStorage.getItem('userType');
-        // Se existir...
-        if (userType) {
-          // Navega para a tela 'HomeTabs' (a tela principal do app)
-          // 'replace' substitui a tela de Login, impedindo o usuário de "voltar" para ela
-          navigation.replace('HomeTabs');
-        }
-      } catch (error) {
-        // Se der erro, apenas loga no console
-        console.error('Erro ao verificar usuário:', error);
-      }
-    };
-    // Chama a função
-    checkUser();
-  }, []); // '[]' = "Rodar apenas uma vez"
-
-  // --- Handlers (Manipuladores) ---
-  // Função chamada ao clicar no botão "Entrar"
-  const handleLoginPress = () => {
-    // Valida os campos usando nossa função externa (Strategy)
-    const validationMessage = validateLoginFields(email, senha);
-    // Se a mensagem for diferente de 'true' (ou seja, for um erro)...
-    if (validationMessage !== true) {
-      // Mostra um Alerta nativo com o erro
-      Alert.alert('Erro', validationMessage as string);
-      // Para a execução
-      return;
-    }
-    // Se a validação passou, chama a função 'handleLogin' do 'useAuth'
-    // Passa 'HomeTabs' como o destino para onde navegar após o sucesso
-    handleLogin(email, senha, navigation);
+  // --- FUNÇÃO DE NAVEGAÇÃO SEGURA ---
+  // Esta função manda o usuário para a área principal (HomeTabs).
+  // Usamos 'reset' em vez de 'navigate' para limpar o histórico.
+  // Isso impede que o usuário aperte o botão "Voltar" do celular e caia no login de novo.
+  const navigateToHome = () => {
+    console.log("Tentando navegar para HomeTabs..."); 
+    
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'HomeTabs' }], // Manda para o menu principal definido no _layout.tsx
+    });
   };
 
-  // --- Renderização (JSX) ---
+  // --- AUTO-LOGIN (Verificação Inicial) ---
+  // O useEffect roda sozinho assim que a tela abre.
+  useEffect(() => {
+    const checkUserSession = async () => {
+      try {
+        // Pergunta para o celular: "Tem alguém logado?" (chave 'fitflow_user_session')
+        const userSession = await AsyncStorage.getItem('fitflow_user_session');
+        
+        // Se tiver (não for nulo), manda direto para a Home sem pedir senha.
+        if (userSession) {
+          navigateToHome();
+        }
+      } catch (error) {
+        console.error('Erro ao verificar sessão:', error);
+      }
+    };
+    // Chama a função que criamos acima
+    checkUserSession();
+  }, []);
+
+  // --- QUANDO CLICA NO BOTÃO "ENTRAR" ---
+  const handleLoginPress = async () => {
+    // 1. Verifica se os campos estão vazios
+    if (!email || !senha) {
+      Alert.alert('Atenção', 'Por favor, preencha e-mail e senha.');
+      return; // Para a execução aqui se estiver vazio
+    }
+
+    // Liga o "carregando" (spinner)
+    setLoading(true);
+
+    try {
+      // 2. Busca a lista de TODOS os usuários cadastrados no celular
+      const usersJson = await AsyncStorage.getItem('fitflow_users');
+      
+      let users = [];
+      // Se a lista existir, converte de texto para objeto (JSON)
+      if (usersJson) {
+        users = JSON.parse(usersJson);
+      }
+
+      // 3. Procura na lista se existe alguém com esse e-mail E essa senha
+      const userFound = users.find((u: any) => 
+        u.email.toLowerCase() === email.toLowerCase() && u.senha === senha
+      );
+
+      if (userFound) {
+        // --- SUCESSO: LOGIN APROVADO ---
+        
+        // Salva os dados desse usuário na "Sessão Atual".
+        // É isso que mantém o usuário logado se ele fechar o app.
+        await AsyncStorage.setItem('fitflow_user_session', JSON.stringify(userFound));
+        
+        // Mostra a mensagem verde de sucesso
+        setVisibleSnackbar(true);
+        
+        // Espera 1 segundo (para o usuário ler a mensagem) e muda de tela
+        setTimeout(() => {
+          setLoading(false);
+          navigateToHome(); // Chama nossa função de navegação
+        }, 1000);
+
+      } else {
+        // --- FALHA: DADOS INCORRETOS ---
+        setLoading(false); // Desliga o carregando
+        Alert.alert('Erro de Acesso', 'E-mail ou senha incorretos. Tente novamente.');
+      }
+
+    } catch (error) {
+      // Se der algum erro técnico (memória cheia, erro de leitura)
+      setLoading(false);
+      console.error(error);
+      Alert.alert('Erro', 'Ocorreu um erro ao tentar fazer login.');
+    }
+  };
+
+  // --- A PARTE VISUAL (O que aparece na tela) ---
   return (
-    // Container principal com o fundo escuro
     <View style={styles.blackContainer}>
-      {/* Barra de status com ícones brancos */}
       <StatusBar style="light" />
-      {/* ScrollView para garantir que a tela role (ex: teclado) */}
+      {/* ScrollView permite rolar a tela se o teclado cobrir os campos */}
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         
-        {/* Container da Logo */}
+        {/* Logotipo */}
         <View style={styles.imageWrapper}>
-          {/* Imagem da Logo */}
-          {/* ATENÇÃO: Atualize este caminho se o seu logo estiver em outro lugar */}
           <Image 
             source={require('../../../assets/images/logoff.png')} 
             style={styles.image} 
-            resizeMode="contain" // 'contain' garante que a imagem caiba sem distorcer
+            resizeMode="contain"
           />
         </View>
 
-        {/* Campo de Email */}
+        {/* Campo de E-mail */}
         <TextInput
-          label="E-mail" // Texto do label
-          value={email} // Valor (controlado pelo estado)
-          onChangeText={setEmail} // Função chamada ao digitar
-          style={styles.input} // Estilo do componente
-          autoCapitalize="none" // Não deixar a primeira letra maiúscula
-          keyboardType="email-address" // Otimiza o teclado para email
-          mode="outlined" // Estilo visual (com borda)
-          theme={textInputTheme}
+          label="E-mail"
+          value={email}
+          onChangeText={setEmail} // Atualiza o estado 'email' quando digita
+          style={styles.input}
+          autoCapitalize="none" // Importante: não deixa a primeira letra maiúscula
+          keyboardType="email-address" // Teclado com @
+          mode="outlined"
+          theme={textInputTheme}
           textColor={FITFLOW_COLORS.textLight}
         />
 
@@ -137,58 +161,59 @@ export default function LoginScreen() {
         <TextInput
           label="Senha"
           value={senha}
-          onChangeText={setSenha}
-          secureTextEntry // Esconde o texto da senha
+          onChangeText={setSenha} // Atualiza o estado 'senha'
+          secureTextEntry // Transforma o texto em bolinhas/asteriscos
           style={styles.input}
           mode="outlined"
           theme={textInputTheme}
           textColor={FITFLOW_COLORS.textLight}
         />
 
-        {/* Botão de Login */}
+        {/* Botão Entrar */}
         <Button
-          mode="contained" // Estilo visual (sólido)
-          onPress={handleLoginPress} // Função chamada ao clicar
-          style={styles.button} // Nosso estilo (cor vermelha)
-          contentStyle={{ paddingVertical: 8 }} // Estilo interno (aumenta a altura)
-          labelStyle={{ color: '#fff', fontWeight: 'bold', fontSize: 20 }} // Estilo do texto "Entrar"
-          loading={loading} // Se 'loading' for true, mostra um spinner
-          disabled={loading} // Se 'loading' for true, desabilita o botão
+          mode="contained"
+          onPress={handleLoginPress} // Chama a função de login
+          style={styles.button}
+          contentStyle={{ paddingVertical: 8 }}
+          labelStyle={{ color: '#fff', fontWeight: 'bold', fontSize: 20 }}
+          loading={loading} // Mostra o spinner se estiver carregando
+          disabled={loading} // Impede clicar duas vezes
         >
           Entrar
         </Button>
 
-        {/* Link "Esqueci a senha" */}
+        {/* Link Esqueci a Senha */}
         <Text 
-          style={styles.linkRed} // Nosso estilo (vermelho)
-          onPress={() => navigation.navigate('RedefinirSenha')} // Navega para a tela
+          style={styles.linkRed}
+          onPress={() => navigation.navigate('RedefinirSenha')}
         >
           Esqueci a senha
         </Text>
 
-        {/* Divisor "--- ou ---" */}
+        {/* Divisor Visual "-- ou --" */}
         <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} /> {/* Linha esquerda */}
-          <Text style={styles.dividerText}>ou</Text> {/* Texto "ou" */}
-          <View style={styles.dividerLine} /> {/* Linha direita */}
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ou</Text>
+          <View style={styles.dividerLine} />
         </View>
 
-        {/* Seção "Cadastre-se" */}
+        {/* Link para criar conta */}
         <View style={styles.registerContainer}>
           <Text style={styles.registerText}>Não tem uma conta?</Text>
           <Text 
-            style={styles.linkRedInGroup} // Mesmo estilo vermelho
-            onPress={() => navigation.navigate('RegistroUser')} // Navega para o Registro
+            style={styles.linkRedInGroup}
+            onPress={() => navigation.navigate('RegistroUser')}
           >
             {' '}Cadastre-se
           </Text>
         </View>
 
-        {/* Snackbar (aviso) de sucesso */}
+        {/* Notificação flutuante de sucesso */}
         <Snackbar
-          visible={visibleSnackbar} // Controla a visibilidade
-          onDismiss={() => setVisibleSnackbar(false)} // Função ao fechar
-          duration={Snackbar.DURATION_SHORT} // Duração
+          visible={visibleSnackbar}
+          onDismiss={() => setVisibleSnackbar(false)}
+          duration={2000}
+          style={{ backgroundColor: '#2ecc71' }} // Fundo verde
         >
           Login efetuado com sucesso!
         </Snackbar>

@@ -35,34 +35,6 @@ export default function HomeScreen() {
 
     animate();
   }, [index]);
-
-  return (
-    <LinearGradient
-      colors={['#8B4513', '#D2B48C', '#FFF8E1']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
-      <Image
-        source={require('../../assets/images/Elysium.png')}
-        style={styles.image}
-      />
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>Bem-vindo à Elysium!</Text>
-        <Text style={styles.subtitle}>Nós Somos Especialistas em</Text>
-        <LinearGradient
-          colors={['#FF7E5F', '#FEB47B']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradientText}
-        >
-          <Animated.Text style={[styles.typingText, { opacity: fadeAnim }]}>
-            {texts[index]}
-          </Animated.Text>
-        </LinearGradient>
-      </View>
-    </LinearGradient>
-  );
 }
 
 const styles = StyleSheet.create({

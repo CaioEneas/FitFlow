@@ -1,176 +1,116 @@
 /* --- app/(tabs)/usuario/styles/PerfilStyles.ts --- */
-/* Estilos para o Painel de Admin (GerenciamentoUser) com tema FitFlow */
+/* Estilos para a tela "Perfil" com Histórico Dinâmico */
 
-// Importa o StyleSheet para criar a folha de estilos
 import { StyleSheet } from 'react-native';
 
-// --- PALETA DE CORES FITFLOW (Admin) ---
-// Define as cores que vamos usar nesta tela
 const COLORS = {
-  background: '#1C1C1E', // Fundo escuro
-  surface: '#2C2C2E',    // Fundo de "superfícies" (cards, modais, tabelas)
-  brandRed: '#E63946',   // Vermelho oficial da marca
-  textLight: '#FFFFFF',  // Texto principal (branco)
-  textGray: '#8A8A8E',   // Texto secundário (cinza)
-  inputBackground: '#2C2C2E', // Fundo dos campos de texto
+  background: '#1C1C1E',
+  brandRed: '#E63946',
+  textLight: '#FFFFFF',
+  textGray: '#8A8A8E',
+  surface: '#2C2C2E',
+  successGreen: '#4CAF50', // Verde para sucesso
+  cancelRed: '#FF5252',    // Vermelho para cancelado
 };
 
-// Exporta os estilos para serem usados no Perfil.tsx
 export const styles = StyleSheet.create({
-  // --- Container Principal ---
   container: {
-    flex: 1, // Faz a tela ocupar todo o espaço
-    backgroundColor: COLORS.background, // Define o fundo escuro
-    padding: 16, // Espaçamento interno
+    flex: 1, 
+    backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    alignItems: 'center', 
+    paddingTop: 60, 
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   
-  // --- Barra de Pesquisa ---
-  searchInput: {
-    marginVertical: 16, // Espaço em cima e embaixo
-    backgroundColor: COLORS.inputBackground, // Fundo do input
+  // --- Perfil ---
+  avatar: {
+    backgroundColor: COLORS.surface, 
+    marginBottom: 20, 
+  },
+  nome: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: COLORS.textLight,
+    marginBottom: 8,
+  },
+  email: {
+    fontSize: 16,
+    color: COLORS.textGray,
+    marginBottom: 30,
   },
 
-  // --- Título da Tabela ---
-  titleContainer: {
-    alignItems: 'center', // Centraliza o título
+  // --- Botões ---
+  buttonContainer: {
+    width: '100%',
+    marginBottom: 30,
+    gap: 10,
   },
-  tableTitle: {
+  button: {
+    width: '100%',
+    paddingVertical: 6,
+    backgroundColor: COLORS.brandRed,
+    borderRadius: 8,
+  },
+  buttonLogout: {
+    width: '100%',
+    paddingVertical: 6,
+    borderColor: COLORS.brandRed,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+
+  // --- Histórico ---
+  sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.textLight, // Cor branca
-    marginVertical: 10,
-  },
-
-  // --- Tabela (DataTable) ---
-  // Container do Scroll Horizontal
-  scrollContainer: {
-    flex: 1, // Permite que a tabela ocupe o espaço restante
-    marginBottom: 10,
-  },
-  // Container do Scroll Vertical
-  verticalScroll: {
-    flex: 1,
-  },
-  // Estilo da Tabela em si
-  dataTable: {
-    backgroundColor: COLORS.surface, // Fundo cinza escuro
-    borderRadius: 8, // Bordas arredondadas
-  },
-  // Cabeçalho da Tabela
-  tableHeader: {
-    backgroundColor: '#3A3A3C', // Um cinza um pouco mais escuro para o header
-    borderTopLeftRadius: 8, // Arredonda canto superior esquerdo
-    borderTopRightRadius: 8, // Arredonda canto superior direito
-  },
-  // Célula do Cabeçalho
-  columnHeader: {
-    flex: 1, // Faz as colunas terem largura igual
-  },
-  // Texto do Cabeçalho
-  columnHeaderText: {
     color: COLORS.textLight,
-    fontWeight: 'bold',
-    fontSize: 14,
+    alignSelf: 'flex-start',
+    marginBottom: 15,
+    marginTop: 10,
   },
-  // Linha Par (Efeito Zebrado)
-  zebraRowEven: {
+  historyItem: {
+    width: '100%',
     backgroundColor: COLORS.surface,
-  },
-  // Linha Ímpar (Efeito Zebrado)
-  zebraRowOdd: {
-    backgroundColor: '#3A3A3C', // Cor alternada
-  },
-  // Célula comum da Tabela
-  columnCell: {
-    flex: 1,
-  },
-  // Estilo para o TEXTO dentro da célula
-  cellText: {
-    color: COLORS.textLight, // Cor branca
-  },
-
-  // --- Contador de Usuários ---
-  counterText: {
-    color: COLORS.textGray, // Cor cinza
-    textAlign: 'center',
-    marginVertical: 10,
-  },
-
-  // --- Estilos do Modal ---
-  // Estilo do container do Modal (do React Native Paper)
-  modal: {
-    backgroundColor: COLORS.surface, // Fundo cinza escuro
-    marginHorizontal: 20, // Margens laterais
-    borderRadius: 10, // Bordas arredondadas
-    padding: 20, // Espaçamento interno
-  },
-  // (Este estilo não é mais necessário, o Paper cuida disso)
-  modalContent: {
-  },
-  // Cabeçalho do Modal
-  modalHeader: {
-    borderBottomWidth: 1, // Linha divisória
-    borderBottomColor: COLORS.textGray,
-    paddingBottom: 10,
-    marginBottom: 20,
-  },
-  // Título do Modal
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.textLight,
-    textAlign: 'center',
-  },
-  
-  // --- Grid de Inputs (dentro do Modal) ---
-  gridContainer: {
-    // (O código já usa flex, então só precisamos de espaçamento)
-  },
-  gridItem: {
-    backgroundColor: COLORS.inputBackground, // Fundo do input
-    marginBottom: 16, // Espaço entre os inputs
-  },
-
-  // --- Seletor de Imagem ---
-  imageContainer: {
-    alignItems: 'center', // Centraliza
-    marginVertical: 20,
-  },
-  // Imagem de perfil selecionada
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60, // Círculo perfeito
-  },
-  // "Caixa" da imagem de placeholder
-  placeholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.background, // Fundo mais escuro
-    justifyContent: 'center',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  // Ícone de placeholder (usuário)
-  placeholderImage: {
-    width: 60,
-    height: 60,
-    tintColor: COLORS.textGray, // Colore o ícone de cinza
+  historyInfo: {
+    flex: 1,
+  },
+  historyClass: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textLight,
+    marginBottom: 4,
+  },
+  historyDate: {
+    fontSize: 14,
+    color: COLORS.textGray,
   },
   
-  // --- Botões do Modal (Rodapé) ---
-  modalFooter: {
-    flexDirection: 'row', // Alinha botões na horizontal
-    justifyContent: 'flex-end', // Alinha à direita
-    marginTop: 20,
+  // --- Status (Base) ---
+  statusBadge: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  // Botão principal (Adicionar/Atualizar)
-  agendamentoButton: {
-    backgroundColor: COLORS.brandRed, // Cor vermelha
+  // --- Status Específicos ---
+  statusConcluida: {
+    color: COLORS.successGreen,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Verde claro transparente
   },
-
-  // --- Logo (REMOVER) ---
-  image: {
-    display: 'none', // Esconde a imagem do "Elysium"
+  statusCancelada: {
+    color: COLORS.cancelRed,
+    backgroundColor: 'rgba(255, 82, 82, 0.1)', // Vermelho claro transparente
   },
 });
