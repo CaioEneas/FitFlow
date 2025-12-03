@@ -1,30 +1,25 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Pressable, ActivityIndicator, Text } from 'react-native'; 
-
-// AsyncStorage: É a "memória" do celular. Usamos para ver se o usuário já entrou antes.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Navegadores: Ferramentas para criar os menus
-import { createDrawerNavigator } from '@react-navigation/drawer'; // Menu lateral (Hambúrguer)
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'; // Barra de baixo
-
-// Ferramentas úteis
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'; 
 import { useFocusEffect } from '@react-navigation/native'; 
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp } from '@react-navigation/native';
 
-// Importação das Telas (Páginas)
+// Importação das Telas
 import LoginScreen from './usuario/Login';
 import RegistroUser from './usuario/RegistroUser';
 import AlterarSenhaScreen from './usuario/AlterarSenha';
 import RedefinirSenhaScreen from './usuario/RedefinirSenha';
+import SelecaoPlanoScreen from './usuario/SelecaoPlano'; 
 import CustomDrawerContent from './CustomDrawerContent'; 
 import HomeScreen from './home/index'; 
 import MeuPerfilScreen from './usuario/Perfil'; 
 import MeusAgendamentos from './agendamento/MeusAgendamentos'; 
 import GerenciamentoUser from './usuario/Perfil'; 
 
-// Cores do aplicativo
+// PALETA DE CORES
 const FITFLOW_COLORS = {
   background: '#1C1C1E', 
   brandRed: '#E63946',   
@@ -38,7 +33,7 @@ const TabNavigator = createBottomTabNavigator();
 // Um componente vazio só para o botão "Sair" não dar erro visual
 const LogoutComponent = () => <View />;
 
-// --- MENU DE ABAS (A barra lá embaixo) ---
+// MENU DE ABAS  
 function Tabs() {
   return (
     <TabNavigator.Navigator
@@ -55,7 +50,7 @@ function Tabs() {
         // Estilos visuais (cores, negrito, etc)
         headerTintColor: FITFLOW_COLORS.textLight, 
         headerTitleStyle: { fontWeight: 'bold' },
-        headerShown: false, // Esconde o título (já temos o do menu lateral)
+        headerShown: false, 
         headerBackground: () => ( <View style={{ flex: 1, backgroundColor: FITFLOW_COLORS.background }} /> ),
         tabBarActiveTintColor: FITFLOW_COLORS.brandRed, 
         tabBarInactiveTintColor: FITFLOW_COLORS.textGray, 
@@ -70,15 +65,14 @@ function Tabs() {
   );
 }
 
-// --- MENU PRINCIPAL (A Gaveta Lateral) ---
+// MENU PRINCIPAL 
 export default function DrawerLayout() {
   // Estados: Variáveis que controlam o comportamento da tela
   const [isLoggedIn, setIsLoggedIn] = useState(false); // O usuário está logado?
   const [isAdmin, setIsAdmin] = useState(false); // O usuário é chefe?
   const [loading, setLoading] = useState(true); // Ainda está carregando?
 
-  // Função: Verificar Login
-  // Ela vai na memória do celular e vê se tem a "carteirinha" (sessão) salva.
+  // Verificar Login
   const checkLogin = async () => {
     try {
       const session = await AsyncStorage.getItem('fitflow_user_session');
@@ -87,7 +81,7 @@ export default function DrawerLayout() {
         const user = JSON.parse(session);
         setIsAdmin(user.userType === '0'); // Verifica se é admin
       } else {
-        setIsLoggedIn(false); // Não achou. Bloqueia.
+        setIsLoggedIn(false); 
         setIsAdmin(false);
       }
     } catch (e) {
@@ -148,12 +142,7 @@ export default function DrawerLayout() {
         ),
       })}
     >
-      {/* LISTA DE TODAS AS TELAS:
-         Todas as telas existem aqui, mas usamos um truque visual:
-         'display: flex' = Visível no menu
-         'display: none' = Invisível no menu
-      */}
-
+    
       {/* 1. TABS (Home) - Só aparece se estiver logado */}
       <DrawerNavigator.Screen 
         name="HomeTabs" 
@@ -225,7 +214,19 @@ export default function DrawerLayout() {
         }} 
       />
 
-      {/* 7. SAIR - Só aparece se estiver logado */}
+      {/* 7. NOVA TELA: SELEÇÃO DE PLANO (Invisível no menu) */}
+      <DrawerNavigator.Screen 
+        name="SelecaoPlano" 
+        component={SelecaoPlanoScreen} 
+        options={{ 
+          title: 'Planos e Pagamento', 
+          drawerItemStyle: { display: 'none' }, // Escondido do menu lateral
+          headerShown: true, // Mostra a barra em cima para ter o botão de voltar
+          headerTintColor: FITFLOW_COLORS.textLight
+        }} 
+      />
+
+      {/* 8. SAIR - Só aparece se estiver logado */}
       <DrawerNavigator.Screen 
         name="Sair" 
         component={LogoutComponent} 
